@@ -24,9 +24,12 @@ public class DashboardAgriculteur extends JFrame {
     private JButton refreshBtn;
     private JButton irrigateBtn;
 
+    // 🌿 NOUVEAU : choix parcelle
+    private JComboBox<String> comboParcelle;
+
     public DashboardAgriculteur() {
 
-        setTitle("🌿 AgriTIC - Interface Graphique");
+        setTitle("🌿 AgriTIC -  Dashboard APP");
         setSize(1000, 600);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -37,6 +40,7 @@ public class DashboardAgriculteur extends JFrame {
 
     // ================= RMI =================
     private void initRMI() {
+
         try {
             Registry registry = LocateRegistry.getRegistry("localhost", 1099);
             service = (AgriTICRemote) registry.lookup("AgriTICService");
@@ -50,33 +54,32 @@ public class DashboardAgriculteur extends JFrame {
     private void initUI() {
 
         Color bg = new Color(245, 247, 250);
-        Color primary = new Color(41, 128, 185);
+        Color blue = new Color(41, 128, 185);
         Color green = new Color(46, 204, 113);
-        Color red = new Color(231, 76, 60);
 
         setLayout(new BorderLayout());
         getContentPane().setBackground(bg);
 
         // ===== HEADER =====
-        title = new JLabel("🌾 AGRITIC CENTER", SwingConstants.CENTER);
+        title = new JLabel("AGRITIC CENTRE DE CONTROLE ", SwingConstants.CENTER);
         title.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        title.setForeground(primary);
+        title.setForeground(blue);
         title.setBorder(new EmptyBorder(20, 10, 20, 10));
         add(title, BorderLayout.NORTH);
 
         // ===== TABLE =====
         model = new DefaultTableModel();
+
         model.addColumn("🆔 ID");
         model.addColumn("🌽 Culture");
-        model.addColumn("💧 Humidité");
-        model.addColumn("🌡 Température");
+        model.addColumn("💧 Humidité (%)");
+        model.addColumn("🌡 Température (°C)");
         model.addColumn("⚙ État");
 
         table = new JTable(model);
         table.setRowHeight(30);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 14));
 
-        // Center alignment
         DefaultTableCellRenderer center = new DefaultTableCellRenderer();
         center.setHorizontalAlignment(JLabel.CENTER);
 
@@ -88,20 +91,26 @@ public class DashboardAgriculteur extends JFrame {
         scroll.setBorder(new EmptyBorder(10, 20, 10, 20));
         add(scroll, BorderLayout.CENTER);
 
-        // ===== FOOTER =====
+        // ===== PANEL BAS =====
         JPanel bottom = new JPanel(new FlowLayout());
         bottom.setBackground(bg);
 
-        refreshBtn = new JButton("🔄 Refresh Data");
-        irrigateBtn = new JButton("💧 Irrigate P01");
+        refreshBtn = new JButton(" Actualiser");
 
-        styleButton(refreshBtn, primary);
-        styleButton(irrigateBtn, green);
+        comboParcelle = new JComboBox<>(new String[]{
+                "P01", "P02", "P03", "P04", "P05"
+        });
 
-        status = new JLabel("🟡 System ready...");
+        irrigateBtn = new JButton(" Irriguer");
+
+        style(refreshBtn, blue);
+        style(irrigateBtn, green);
+
+        status = new JLabel("🟡 Système prêt...");
         status.setFont(new Font("Segoe UI", Font.BOLD, 14));
 
         bottom.add(refreshBtn);
+        bottom.add(comboParcelle);
         bottom.add(irrigateBtn);
         bottom.add(status);
 
@@ -113,7 +122,7 @@ public class DashboardAgriculteur extends JFrame {
     }
 
     // ================= STYLE =================
-    private void styleButton(JButton btn, Color color) {
+    private void style(JButton btn, Color color) {
         btn.setBackground(color);
         btn.setForeground(Color.WHITE);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
@@ -131,15 +140,16 @@ public class DashboardAgriculteur extends JFrame {
 
             for (String p : data) {
 
-                ParsedParcelle pp = parseParcelle(p);
+                ParsedParcelle pp = parse(p);
 
-                String stateIcon;
+                String etat;
+
                 if (pp.humidite < 30) {
-                    stateIcon = "🔥 SECHE";
+                    etat = " SECHE";
                 } else if (pp.humidite < 70) {
-                    stateIcon = "⚠ NORMAL";
+                    etat = " NORMAL";
                 } else {
-                    stateIcon = "💧 HUMIDE";
+                    etat = " HUMIDE";
                 }
 
                 model.addRow(new Object[]{
@@ -147,7 +157,7 @@ public class DashboardAgriculteur extends JFrame {
                         pp.culture,
                         pp.humidite,
                         pp.temperature,
-                        stateIcon
+                        etat
                 });
             }
 
@@ -159,14 +169,17 @@ public class DashboardAgriculteur extends JFrame {
         }
     }
 
-    // ================= IRRIGATION =================
+    // ================= IRRIGATION (MODIFIÉE) =================
     private void irrigate() {
 
         try {
-            service.irriguerManuellement("P01");
+
+            String parcelle = (String) comboParcelle.getSelectedItem();
+
+            service.irriguerManuellement(parcelle);
 
             JOptionPane.showMessageDialog(this,
-                    "💧 Irrigation envoyée pour P01");
+                    "💧 Irrigation envoyée pour " + parcelle);
 
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this,
@@ -174,17 +187,24 @@ public class DashboardAgriculteur extends JFrame {
         }
     }
 
-    // ================= PARSER PRO =================
-    private ParsedParcelle parseParcelle(String p) {
+    // ================= PARSER =================
+    private ParsedParcelle parse(String text) {
 
-        ParsedParcelle pp = new ParsedParcelle();
+        ParsedParcelle p = new ParsedParcelle();
 
-        pp.id = extract(p, "id='", "'");
-        pp.culture = extract(p, "culture='", "'");
-        pp.humidite = parseDouble(extract(p, "humidite=", ","));
-        pp.temperature = parseDouble(extract(p, "temperature=", ","));
+        try {
+            p.id = extract(text, "id='", "'");
+            p.culture = extract(text, "culture='", "'");
+            p.humidite = parseDouble(extract(text, "humidite=", ","));
+            p.temperature = parseDouble(extract(text, "temperature=", ","));
+        } catch (Exception e) {
+            p.id = "??";
+            p.culture = "??";
+            p.humidite = 0;
+            p.temperature = 0;
+        }
 
-        return pp;
+        return p;
     }
 
     private String extract(String text, String start, String end) {
@@ -198,9 +218,9 @@ public class DashboardAgriculteur extends JFrame {
         }
     }
 
-    private double parseDouble(String val) {
+    private double parseDouble(String v) {
         try {
-            return Double.parseDouble(val.replaceAll("[^0-9.]", ""));
+            return Double.parseDouble(v.replaceAll("[^0-9.]", ""));
         } catch (Exception e) {
             return 0;
         }
