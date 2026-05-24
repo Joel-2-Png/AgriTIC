@@ -60,9 +60,16 @@ public class ClientHandler implements Runnable {
                     // Analyse irrigation
                     if (humidite < 30) {
 
-                        System.out.println("⚠ Parcelle sèche : " + id);
+                    System.out.println("⚠ Parcelle sèche : " + id);
 
-                    }
+                    // Envoyer commande à la pompe
+                    if (ServeurAgriTIC.pompeWriter != null) {
+
+                    ServeurAgriTIC.pompeWriter.println(
+                    "IRRIGUER;" + id
+                    );
+    }
+}
 
                     if (humidite < 20) {
 
@@ -71,8 +78,15 @@ public class ClientHandler implements Runnable {
 
                     if (humidite >= 70) {
 
-                        System.out.println("✅ Arrêt irrigation : " + id);
-                    }
+    System.out.println("✅ Arrêt irrigation : " + id);
+
+    if (ServeurAgriTIC.pompeWriter != null) {
+
+        ServeurAgriTIC.pompeWriter.println(
+                "STOP;" + id
+        );
+    }
+}
                 }
             }
 

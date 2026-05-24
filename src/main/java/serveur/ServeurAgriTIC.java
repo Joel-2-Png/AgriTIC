@@ -1,6 +1,7 @@
 package serveur;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
@@ -10,39 +11,78 @@ import modele.Parcelle;
 
 public class ServeurAgriTIC {
 
-    // Collection partagée des parcelles
     public static Map<String, Parcelle> parcelles = new HashMap<>();
+
+    // Communication avec la pompe
+    public static PrintWriter pompeWriter;
 
     public static void main(String[] args) {
 
-        int port = 5000;
+        int portParcelle = 5000;
+        int portPompe = 6000;
 
         try {
 
-            ServerSocket serveur = new ServerSocket(port);
+            // Serveur parcelles
+            ServerSocket serveurParcelle =
+                    new ServerSocket(portParcelle);
 
-            System.out.println("Serveur AgriTIC démarré sur le port " + port);
+            // Serveur pompe
+            ServerSocket serveurPompe =
+                    new ServerSocket(portPompe);
 
+            System.out.println("Serveur AgriTIC démarré");
+
+            // Thread pompe
+            new Thread(() -> {
+
+                try {
+
+                    System.out.println("En attente de la pompe...");
+
+                    Socket pompeSocket = serveurPompe.accept();
+
+                    pompeWriter = new PrintWriter(
+                            pompeSocket.getOutputStream(),
+                            true
+                    );
+
+                    System.out.println("✅ Pompe connectée");
+
+                } catch (IOException e) {
+
+                    System.out.println("Erreur pompe");
+                }
+
+            }).start();
+
+            // Gestion des parcelles
             while (true) {
 
-                System.out.println("En attente de connexion...");
+                System.out.println(
+                        "En attente d'une parcelle..."
+                );
 
-                Socket socket = serveur.accept();
+                Socket socket = serveurParcelle.accept();
 
-                System.out.println("Nouvelle connexion : "
-                        + socket.getInetAddress());
+                System.out.println(
+                        "Nouvelle parcelle connectée"
+                );
 
-                // Création du thread
-                ClientHandler clientHandler = new ClientHandler(socket);
+                ClientHandler clientHandler =
+                        new ClientHandler(socket);
 
-                Thread thread = new Thread(clientHandler);
+                Thread thread =
+                        new Thread(clientHandler);
 
                 thread.start();
             }
 
         } catch (IOException e) {
 
-            System.out.println("Erreur serveur : " + e.getMessage());
+            System.out.println(
+                    "Erreur serveur : " + e.getMessage()
+            );
         }
     }
 }
