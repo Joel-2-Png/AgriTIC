@@ -6,6 +6,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 
 import modele.Parcelle;
 
@@ -32,7 +34,14 @@ public class ServeurAgriTIC {
                     new ServerSocket(portPompe);
 
             System.out.println("Serveur AgriTIC démarré");
+            Registry registry = LocateRegistry.createRegistry(1099);
 
+            registry.rebind(
+               "AgriTICService",
+                new AgriTICRemoteImpl()
+            );
+
+            System.out.println("✅ Serveur RMI lancé");
             // Thread pompe
             new Thread(() -> {
 
