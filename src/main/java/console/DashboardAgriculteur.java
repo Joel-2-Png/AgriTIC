@@ -129,7 +129,7 @@ public class DashboardAgriculteur extends JFrame {
         btn.setFocusPainted(false);
         btn.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
     }
-
+ 
     // ================= LOAD DATA =================
     private void loadData() {
 
